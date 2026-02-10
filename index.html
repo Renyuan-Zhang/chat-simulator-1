@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Service Chat Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #0b2f57;
+            --primary-light: #d1e3f7;
+            --primary-medium: #2b5a8f;
+            --accent: #16A34A;
+            --accent-light: #F0FDF4;
+            --amber: #D97706;
+            --amber-light: #FFFBEB;
+            --slate-50: #F8FAFC;
+            --slate-100: #F1F5F9;
+            --slate-200: #E2E8F0;
+            --slate-400: #94A3B8;
+            --slate-500: #64748B;
+            --slate-600: #475569;
+            --slate-800: #1E293B;
+            --slate-900: #0F172A;
+        }
+
+        * { margin:0; padding:0; box-sizing:border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--slate-100);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 640px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 4px 32px rgba(11,47,87,0.15);
+            overflow: hidden;
+        }
+
+        .page { display: none; flex-direction: column; animation: fadeIn .35s ease; }
+        .page.active { display: flex; }
+
+        @keyframes fadeIn {
+            from { opacity:0; transform:translateY(10px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+
+        /* ══════════════════════════════
+           CHAT PAGE
+        ══════════════════════════════ */
+        #chatPage { height: 620px; }
+
+        .chat-header {
+            background: var(--primary-dark);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .chat-icon {
+            width: 38px;
+            height: 38px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .chat-info { flex: 1; }
+        .chat-title { font-size: 14.5px; font-weight: 600; color: white; }
+        .chat-subtitle { font-size: 12px; color: rgba(255,255,255,0.75); }
+
+        .round-badge {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            font-family: 'Inter', monospace;
+        }
+
+        #chatFeed {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: var(--slate-50);
+        }
+
+        .msg {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            animation: slideUp .25s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity:0; transform:translateY(8px); }
+            to { opacity:1; transform:translateY(0); }
+        }
+
+        .msg.customer { justify-content: flex-start; }
+        .msg.agent { justify-content: flex-end; }
+
+        .msg-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .customer .msg-avatar { background: var(--primary-light); order: 1; }
+        .agent .msg-avatar { background: var(--primary-dark); order: 2; }
+        .customer .bubble { order: 2; }
+        .agent .bubble { order: 1; }
+
+        .bubble {
+            max-width: 66%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 13.5px;
+            line-height: 1.55;
+        }
+
+        .customer .bubble {
+            background: white;
+            color: var(--slate-800);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 6px rgba(15,23,42,0.07);
+        }
+
+        .agent .bubble {
+            background: var(--primary-dark);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .typing {
+            display: none;
+            align-items: flex-end;
+            gap: 8px;
+        }
+        .typing.show { display: flex; }
+
+        .typing-bubble {
+            background: white;
+            padding: 12px 14px;
+            border-radius: 16px;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 6px rgba(15,23,42,0.07);
+        }
+
+        .dots { display: flex; gap: 4px; }
+        .dots span {
+            width: 7px;
+            height: 7px;
+            background: var(--slate-400);
+            border-radius: 50%;
+            animation: bounce 1.3s infinite;
+        }
+        .dots span:nth-child(2) { animation-delay: .18s; }
+        .dots span:nth-child(3) { animation-delay: .36s; }
+
+        @keyframes bounce {
+            0%,60%,100% { transform:translateY(0); }
+            30% { transform:translateY(-8px); }
+        }
+
+        .input-area {
+            border-top: 1px solid var(--slate-200);
+            padding: 12px 16px;
+            background: white;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-area.disabled { opacity:0.5; pointer-events:none; }
+
+        #msgInput {
+            flex: 1;
+            padding: 10px 16px;
+            border: 1.5px solid var(--slate-200);
+            border-radius: 24px;
+            font-size: 13.5px;
+            font-family: 'Inter', sans-serif;
+            outline: none;
+            background: var(--slate-50);
+            transition: border-color .2s, background .2s;
+        }
+
+        #msgInput:focus { border-color: var(--primary-medium); background: white; }
+
+        #sendBtn {
+            padding: 10px 20px;
+            background: var(--primary-dark);
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 13.5px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: background .2s;
+        }
+
+        #sendBtn:hover { background: var(--primary-medium); }
+        #sendBtn:disabled { background: var(--slate-200); color: var(--slate-400); cursor: not-allowed; }
+
+        .error {
+            background: #FEE2E2;
+            border: 1px solid #FCA5A5;
+            color: #991B1B;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        /* ══════════════════════════════
+           FEEDBACK PAGE
+        ══════════════════════════════ */
+        #feedbackPage { max-height: 90vh; overflow-y: auto; }
+
+        .fb-header {
+            background: linear-gradient(145deg, var(--primary-dark) 0%, var(--primary-medium) 60%, #3d6ca3 100%);
+            padding: 28px 32px;
+            color: white;
+        }
+
+        .fb-header h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+        .fb-header p { font-size: 13px; opacity: 0.8; }
+
+        .score-summary {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 22px 32px;
+            background: var(--primary-light);
+            border-bottom: 1px solid var(--slate-200);
+        }
+
+        .score-circle {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            background: white;
+            border: 4px solid var(--primary-dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .score-num {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            line-height: 1;
+        }
+
+        .score-den {
+            font-size: 13px;
+            color: var(--slate-500);
+            margin-top: 2px;
+        }
+
+        .score-info { flex: 1; }
+
+        .rating-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .badge-Excellent { background: var(--accent-light); color: var(--accent); border: 1px solid #86EFAC; }
+        .badge-Good { background: #DBEAFE; color: #1D4ED8; border: 1px solid #93C5FD; }
+        .badge-Needs-Work { background: var(--amber-light); color: var(--amber); border: 1px solid #FCD34D; }
+        .badge-Poor { background: #FEE2E2; color: #DC2626; border: 1px solid #FCA5A5; }
+
+        .score-percent {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 2px;
+        }
+
+        .score-summary-text {
+            font-size: 13px;
+            color: var(--slate-600);
+            line-height: 1.5;
+        }
+
+        .loading {
+            padding: 60px 32px;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--primary-light);
+            border-top-color: var(--primary-dark);
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading p {
+            color: var(--slate-500);
+            font-size: 14px;
+        }
+
+        .lo-breakdown {
+            padding: 24px 32px 32px;
+        }
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--slate-500);
+            margin-bottom: 16px;
+        }
+
+        .lo-card {
+            background: white;
+            border: 1px solid var(--slate-200);
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+        }
+
+        .lo-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .lo-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary-dark);
+            flex: 1;
+        }
+
+        .score-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .pips {
+            display: flex;
+            gap: 4px;
+        }
+
+        .pip {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--slate-200);
+        }
+
+        .pip.filled { background: var(--primary-dark); }
+
+        .score-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--slate-600);
+            font-family: 'Inter', monospace;
+        }
+
+        .evidence {
+            background: var(--primary-light);
+            padding: 10px 14px;
+            border-left: 3px solid var(--primary-medium);
+            border-radius: 6px;
+            font-size: 12.5px;
+            font-style: italic;
+            color: var(--slate-700);
+            margin-bottom: 10px;
+        }
+
+        .feedback-text {
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--slate-700);
+        }
+
+        .highlights {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            padding: 24px 32px;
+            background: var(--slate-50);
+            border-bottom: 1px solid var(--slate-200);
+        }
+
+        .highlight {
+            background: white;
+            border: 1px solid var(--slate-200);
+            border-radius: 10px;
+            padding: 18px;
+        }
+
+        .highlight h4 {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .highlight.strength h4 { color: var(--accent); }
+        .highlight.improvement h4 { color: var(--amber); }
+
+        .highlight p {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--slate-700);
+        }
+
+        .retry-btn {
+            margin: 0 32px 32px;
+            width: calc(100% - 64px);
+            padding: 14px 24px;
+            background: var(--primary-dark);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: background .2s;
+        }
+
+        .retry-btn:hover { background: var(--primary-medium); }
+
+        .tabs-container {
+            border-top: 1px solid var(--slate-200);
+        }
+
+        .tabs-nav {
+            display: flex;
+            background: var(--slate-50);
+            border-bottom: 2px solid var(--slate-200);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 14px 20px;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            color: var(--slate-600);
+            cursor: pointer;
+            transition: all .2s;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab-btn:hover {
+            color: var(--primary-dark);
+            background: var(--slate-100);
+        }
+
+        .tab-btn.active {
+            color: var(--primary-dark);
+            border-bottom-color: var(--primary-dark);
+            background: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .chat-history-container {
+            padding: 24px 32px;
+            background: var(--slate-50);
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .history-msg {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .history-msg.customer-msg {
+            justify-content: flex-start;
+        }
+
+        .history-msg.agent-msg {
+            justify-content: flex-end;
+        }
+
+        .history-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+
+        .customer-msg .history-avatar { order: 1; }
+        .agent-msg .history-avatar { order: 2; }
+        .customer-msg .history-bubble { order: 2; }
+        .agent-msg .history-bubble { order: 1; }
+
+        .history-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 13.5px;
+            line-height: 1.55;
+        }
+
+        .customer-bubble {
+            background: white;
+            color: var(--slate-800);
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 4px rgba(15,23,42,0.08);
+        }
+
+        .agent-bubble {
+            background: var(--primary-dark);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        @media (max-width: 600px) {
+            .highlights { grid-template-columns: 1fr; }
+            .history-bubble { max-width: 80%; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- ══ CHAT PAGE ══ -->
+    <div id="chatPage" class="page active">
+        <div class="chat-header">
+            <div class="chat-icon">🎧</div>
+            <div class="chat-info">
+                <div class="chat-title">Customer Service Training</div>
+                <div class="chat-subtitle">Practice your support skills</div>
+            </div>
+            <div class="round-badge" id="roundBadge">Round 1 of 8</div>
+        </div>
+        <div id="chatFeed">
+            <div id="typing" class="typing">
+                <div class="msg-avatar" style="background: var(--primary-light)">👤</div>
+                <div class="typing-bubble">
+                    <div class="dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="input-area" id="inputArea">
+            <input type="text" id="msgInput" placeholder="Type your response as the customer service agent...">
+            <button id="sendBtn">Send</button>
+        </div>
+    </div>
+
+    <!-- ══ FEEDBACK PAGE ══ -->
+    <div id="feedbackPage" class="page">
+        <div class="fb-header">
+            <h2>📊 Performance Feedback</h2>
+            <p id="fbScenario">Scenario: —</p>
+        </div>
+        <div id="fbContent">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Analyzing your conversation...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = 'https://chat-backend-openai.vercel.app';
+    const SCENARIO_URL = `${API_BASE}/api/scenario`;
+    const CHAT_URL = `${API_BASE}/api/chat`;
+    const FEEDBACK_URL = `${API_BASE}/api/feedback`;
+
+    let scenario = null;
+    let history = [];
+    let round = 0;
+    let waiting = false;
+    let ended = false;
+
+    const chatFeed = document.getElementById('chatFeed');
+    const msgInput = document.getElementById('msgInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const inputArea = document.getElementById('inputArea');
+    const typing = document.getElementById('typing');
+    const roundBadge = document.getElementById('roundBadge');
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    async function init() {
+        try {
+            const res = await fetch(SCENARIO_URL);
+            if (!res.ok) throw new Error('Failed to load scenario');
+            const data = await res.json();
+            scenario = data.scenario;
+            getAIMessage();
+        } catch (err) {
+            showError('Failed to initialize. Please check your API configuration.');
+        }
+    }
+
+    function addMsg(sender, text) {
+        const div = document.createElement('div');
+        div.className = `msg ${sender}`;
+        div.innerHTML = `
+            <div class="msg-avatar" style="background:${sender==='customer'?'var(--primary-light)':'var(--primary-dark)'}">
+                ${sender==='customer'?'👤':'🎧'}
+            </div>
+            <div class="bubble">${text}</div>`;
+        chatFeed.insertBefore(div, typing);
+        chatFeed.scrollTop = chatFeed.scrollHeight;
+        history.push({ sender, text });
+    }
+
+    function showTyping(show) {
+        typing.classList.toggle('show', show);
+        chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+    function updateRound() {
+        roundBadge.textContent = `Round ${Math.min(round + 1, 8)} of 8`;
+    }
+
+    async function getAIMessage() {
+        waiting = true;
+        sendBtn.disabled = true;
+        showTyping(true);
+
+        try {
+            const res = await fetch(CHAT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: history.map(m => ({
+                        role: m.sender === 'agent' ? 'user' : 'assistant',
+                        content: m.text
+                    })),
+                    conversationCount: round,
+                    customerContext: scenario.customerContext
+                })
+            });
+
+            if (!res.ok) throw new Error(`API error: ${res.status}`);
+            const data = await res.json();
+
+            showTyping(false);
+            addMsg('customer', data.message);
+            round++;
+            updateRound();
+
+            if (data.shouldEnd || round >= 8) endChat();
+
+        } catch (err) {
+            showTyping(false);
+            showError('Failed to get AI response. Please check your API.');
+        }
+
+        waiting = false;
+        sendBtn.disabled = false;
+        msgInput.focus();
+    }
+
+    function sendMsg() {
+        if (waiting || ended) return;
+        const text = msgInput.value.trim();
+        if (!text) return;
+        addMsg('agent', text);
+        msgInput.value = '';
+        getAIMessage();
+    }
+
+    function endChat() {
+        ended = true;
+        inputArea.classList.add('disabled');
+        msgInput.placeholder = 'Conversation complete. Loading feedback...';
+        document.getElementById('fbScenario').textContent = `Scenario ${scenario.id}: ${scenario.title}`;
+        setTimeout(() => {
+            showPage('feedbackPage');
+            getFeedback();
+        }, 1200);
+    }
+
+    async function getFeedback() {
+        try {
+            const res = await fetch(FEEDBACK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    conversationHistory: history,
+                    scenarioTitle: scenario.title
+                })
+            });
+
+            if (!res.ok) throw new Error(`Feedback error: ${res.status}`);
+            const data = await res.json();
+            renderFeedback(data.feedback);
+
+        } catch (err) {
+            document.getElementById('fbContent').innerHTML =
+                '<div class="error">⚠️ Failed to load feedback. Please try again.</div>';
+        }
+    }
+
+    function renderFeedback(f) {
+        const loTitles = {
+            LO1: 'Identify and define the customer issue',
+            LO2: 'Analyze and confirm sufficient information',
+            LO3: 'Demonstrate ownership in guiding the interaction',
+            LO4: 'Select an appropriate and efficient resolution',
+            LO5: 'Use empathetic, professional and risk-aware language'
+        };
+
+        const pips = (score) => {
+            let html = '<div class="pips">';
+            for (let i = 1; i <= 5; i++) {
+                html += `<div class="pip ${i <= score ? 'filled' : ''}"></div>`;
+            }
+            return html + '</div>';
+        };
+
+        const badge = (label) => 'badge-' + (label || '').replace(/\s+/g, '-');
+
+        const cards = Object.entries(f.scores).map(([key, lo]) => `
+            <div class="lo-card">
+                <div class="lo-card-header">
+                    <span class="lo-title">${key}: ${loTitles[key]}</span>
+                    <div class="score-display">
+                        ${pips(lo.score)}
+                        <span class="score-label">${lo.score}/5</span>
+                    </div>
+                </div>
+                <div class="evidence">"${lo.evidence}"</div>
+                <div class="feedback-text">${lo.feedback}</div>
+            </div>`).join('');
+
+        const historyHTML = history.map(msg => `
+            <div class="history-msg ${msg.sender === 'customer' ? 'customer-msg' : 'agent-msg'}">
+                <div class="history-avatar" style="background:${msg.sender === 'customer' ? 'var(--primary-light)' : 'var(--primary-dark)'}">
+                    ${msg.sender === 'customer' ? '👤' : '🎧'}
+                </div>
+                <div class="history-bubble ${msg.sender === 'customer' ? 'customer-bubble' : 'agent-bubble'}">
+                    ${msg.text}
+                </div>
+            </div>`).join('');
+
+        document.getElementById('fbContent').innerHTML = `
+            <div class="score-summary">
+                <div class="score-circle">
+                    <span class="score-num">${f.totalScore}</span>
+                    <span class="score-den">/ ${f.maxScore}</span>
+                </div>
+                <div class="score-info">
+                    <span class="rating-badge ${badge(f.overallRating)}">${f.overallRating}</span>
+                    <div class="score-percent">${f.percentage}%</div>
+                    <div class="score-summary-text">${f.overallSummary}</div>
+                </div>
+            </div>
+            <div class="tabs-container">
+                <div class="tabs-nav">
+                    <button class="tab-btn active" onclick="switchTab('feedback')">Feedback</button>
+                    <button class="tab-btn" onclick="switchTab('chat-history')">Chat History</button>
+                </div>
+                <div id="feedback-tab" class="tab-content active">
+                    <div class="highlights">
+                        <div class="highlight strength">
+                            <h4>✅ Top Strength</h4>
+                            <p>${f.topStrength}</p>
+                        </div>
+                        <div class="highlight improvement">
+                            <h4>🔧 Key Improvement</h4>
+                            <p>${f.topImprovement}</p>
+                        </div>
+                    </div>
+                    <div class="lo-breakdown">
+                        <div class="section-label">Learning Objective Breakdown</div>
+                        ${cards}
+                    </div>
+                </div>
+                <div id="chat-history-tab" class="tab-content">
+                    <div class="chat-history-container">
+                        ${historyHTML}
+                    </div>
+                </div>
+            </div>
+            <button class="retry-btn" onclick="restart()">Try Another Scenario →</button>`;
+    }
+
+    function restart() {
+        history = [];
+        round = 0;
+        waiting = false;
+        ended = false;
+        scenario = null;
+        inputArea.classList.remove('disabled');
+        msgInput.placeholder = 'Type your response as the customer service agent...';
+        sendBtn.disabled = false;
+        chatFeed.querySelectorAll('.msg, .error').forEach(m => m.remove());
+        updateRound();
+        showPage('chatPage');
+        init();
+    }
+
+    function showError(msg) {
+        const div = document.createElement('div');
+        div.className = 'error';
+        div.textContent = `⚠️ ${msg}`;
+        chatFeed.insertBefore(div, typing);
+    }
+
+    function switchTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        document.getElementById(tabName + '-tab').classList.add('active');
+        
+        // Add active class to clicked button
+        event.target.classList.add('active');
+    }
+
+    sendBtn.addEventListener('click', sendMsg);
+    msgInput.addEventListener('keypress', e => {
+        if (e.key === 'Enter') sendMsg();
+    });
+
+    init();
+</script>
+</body>
+</html>
