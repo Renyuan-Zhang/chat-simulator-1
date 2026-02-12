@@ -38,7 +38,7 @@
 
         .container {
             width: 100%;
-            max-width: 640px;
+            max-width: 872px;
             background: white;
             border-radius: 14px;
             box-shadow: 0 4px 32px rgba(11,47,87,0.15);
@@ -56,7 +56,7 @@
         /* ══════════════════════════════
            CHAT PAGE
         ══════════════════════════════ */
-        #chatPage { height: 400px; }
+        #chatPage { height: 425px; }
 
         .chat-header {
             background: var(--primary-dark);
@@ -585,7 +585,7 @@
                 <div class="chat-title">Customer Service Training</div>
                 <div class="chat-subtitle">Practice your support skills</div>
             </div>
-            <div class="round-badge" id="roundBadge">Round 1 of 8</div>
+            <div class="round-badge" id="roundBadge">Responses left: 8</div>
         </div>
         <div id="chatFeed">
             <div id="typing" class="typing">
@@ -675,7 +675,8 @@
     }
 
     function updateRound() {
-        roundBadge.textContent = `Round ${Math.min(round + 1, 8)} of 8`;
+        const responsesLeft = 8 - round;
+        roundBadge.textContent = `Responses left: ${responsesLeft}`;
     }
 
     async function getAIMessage() {
@@ -702,11 +703,8 @@
 
             showTyping(false);
             addMsg('customer', data.message);
-            round++;
-            updateRound();
 
-            if (data.shouldEnd || round >= 8) endChat();
-
+            // Don't check for end here - we check after agent responds
         } catch (err) {
             showTyping(false);
             showError('Failed to get AI response. Please check your API.');
@@ -723,7 +721,15 @@
         if (!text) return;
         addMsg('agent', text);
         msgInput.value = '';
-        getAIMessage();
+        round++;  // Increment round after agent sends message
+        updateRound();
+        
+        // Check if agent just sent their 8th message
+        if (round >= 8) {
+            endChat();
+        } else {
+            getAIMessage();
+        }
     }
 
     function endChat() {
