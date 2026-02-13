@@ -39,7 +39,7 @@
 
         .container {
             width: 866px;
-            height: 432px;
+            height: 468px;
             background: white;
             overflow: hidden;
         }
@@ -55,7 +55,7 @@
         /* ══════════════════════════════
            CHAT PAGE
         ══════════════════════════════ */
-        #chatPage { height: 432px; }
+        #chatPage { height: 468px; }
 
         .chat-header {
             background: var(--primary-dark);
@@ -237,7 +237,7 @@
         /* ══════════════════════════════
            FEEDBACK PAGE
         ══════════════════════════════ */
-        #feedbackPage { height: 432px; overflow-y: auto; }
+        #feedbackPage { height: 468px; overflow-y: auto; }
 
         .fb-header {
             background: linear-gradient(145deg, var(--primary-dark) 0%, var(--primary-medium) 60%, #3d6ca3 100%);
@@ -579,7 +579,7 @@
         <div class="chat-header">
             <div class="chat-icon">🎧</div>
             <div class="chat-info">
-                <div class="chat-title">Customer Service Training</div>
+                <div class="chat-title" id="customerName">Customer</div>
                 <div class="chat-subtitle">Practice your support skills</div>
             </div>
             <div class="round-badge" id="roundBadge">Responses left: 8</div>
@@ -647,6 +647,10 @@
             if (!res.ok) throw new Error('Failed to load scenario');
             const data = await res.json();
             scenario = data.scenario;
+            
+            // Update customer name in header
+            document.getElementById('customerName').textContent = scenario.customerName || 'Customer';
+            
             getAIMessage();
         } catch (err) {
             showError('Failed to initialize. Please check your API configuration.');
